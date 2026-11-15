@@ -216,6 +216,12 @@
           <label><input type="checkbox" data-view="week"> 🧹 Wekelijkse klusjes</label>
           <label><input type="checkbox" data-view="extra"> 💶 Extra klusjes</label>
           <label><input type="checkbox" data-view="planning"> 📅 Weekplanning</label>
+          <label style="display:block; margin-top:10px">Dagelijkse klusjes afvinken:
+            <select id="dagModus" style="margin-top:4px">
+              <option value="dag">Elke dag</option>
+              <option value="week">1x per week (ouder controleert buiten de app)</option>
+            </select>
+          </label>
         </div>
         <h3>Bonus geven</h3>
         <p class="muted">Stuur je kind een extra beloning met een berichtje. Het ziet die zodra het de app opent.</p>
@@ -320,8 +326,10 @@ const balance = () => earned() - spent();
 const isAdmin = () => S.role === "admin";
 const soort = t => t.cat || "dag";
 const zichtInstellingen = () => Object.assign({ dag: true, week: true, extra: true, planning: true }, S.config.view || {});
+// "dag" = elke dag afvinken; "week" = 1x per week afvinken, ouder controleert buiten de app
+const dagModus = () => zichtInstellingen().dagModus || "dag";
 // Dagelijkse klusjes reset per dag, de rest per week
-const sleutel = t => t.id + (soort(t) === "dag" ? "-d" + today() : "-w" + week());
+const sleutel = t => t.id + (soort(t) === "dag" && dagModus() !== "week" ? "-d" + today() : "-w" + week());
 const prijsVan = p => Number(p.cost) || 50;
 
 // ---- Weekoverzicht (ouder) ----
@@ -448,6 +456,8 @@ function toggle(taskId) {
   if (weekVoorbij()) return setStatus("Deze week is afgesloten. Vraag je ouder om een nieuwe week te starten.", true);
   const task = S.tasks.find(t => t.id === taskId);
   if (!task) return;
+  // Bij 1x per week: na een afvinking klapt de lijst dicht, ook als je hem eerder had opengeklapt
+  if (dagModus() === "week") delete handmatigOpen["dagweek-" + week()];
   const key = sleutel(task);
   const isDone = S.ledger.some(l => l.id === key);
   const pts = Number(task.pts) || 0;
@@ -533,6 +543,10 @@ function importeer() {
 
 document.addEventListener("change", e => {
   if (e.target.id === "autoWeek" && isAdmin()) return zetAutoWeek(e.target.checked);
+  if (e.target.id === "dagModus" && isAdmin()) {
+    return run(() => setDoc(doc(db, "config", "view"), Object.assign({}, zichtInstellingen(), { dagModus: e.target.value })),
+      "Instelling opgeslagen");
+  }
   if (e.target.dataset && e.target.dataset.act === "toggle") toggle(e.target.dataset.id);
   if (e.target.dataset && e.target.dataset.view && isAdmin()) {
     const onderdeel = e.target.dataset.view;
@@ -648,7 +662,7 @@ function renderHistorie() {
     const puntenWeek = S.ledger.filter(l => weekNr(l) === n).reduce((s, l) => s + (Number(l.pts) || 0), 0);
     const startDatum = dagDatum(start);
     const chips = [];
-    for (let i = 0; i < dagen; i++) {
+    for (let i = 0; i < (dagModus() === "week" ? 0 : dagen); i++) {
       const d = new Date(startDatum);
       d.setDate(d.getDate() + i);
       const aantal = dagLedger.filter(l => l.id.endsWith("-d" + naarDatum(d))).length;
@@ -666,16 +680,19 @@ function renderHistorie() {
     // Week is af als alle klusjes die het kind ziet zijn gedaan; dan klapt de lijst dicht.
     // Verborgen onderdelen (zie "Wat ziet je kind?") tellen niet mee.
     const zicht = zichtInstellingen();
+    const weekModus = dagModus() === "week";
+    const dagKlaar = weekModus ? dagTaken.filter(t => gedaan.has(t.id + "-w" + n)).length : dagLedger.length;
+    const dagDoel = weekModus ? dagTaken.length : dagTaken.length * dagen;
     const telDag = zicht.dag !== false && dagTaken.length > 0;
     const telWeek = zicht.week !== false && weekTaken.length > 0;
     const compleet = (telDag || telWeek) &&
-      (!telDag || dagLedger.length >= dagTaken.length * dagen) &&
+      (!telDag || dagKlaar >= dagDoel) &&
       (!telWeek || weekGedaan === weekTaken.length);
     const vastDicht = n === huidige && voorbij;
     const open = !vastDicht && (handmatigOpen.hasOwnProperty(n) ? handmatigOpen[n] : (n === huidige && !compleet));
     html += '<details class="week-blok" data-week="' + n + '" data-vast="' + (vastDicht ? "1" : "0") + '"' + (open ? " open" : "") + '>' +
       '<summary><strong>Week ' + n + '</strong> · weeknummer ' + isoWeek(start) + ' <span class="muted">vanaf ' + esc(lbl) + (vastDicht ? " · afgesloten" : n === huidige ? " · nu bezig" : "") + '</span>' +
-      '<div class="muted">🏡 ' + dagLedger.length + '/' + (dagTaken.length * dagen) + ' dagklusjes · 🧹 ' + weekGedaan + '/' + weekTaken.length + ' wekelijkse · ⭐ ' + puntenWeek + ' punten</div></summary>' +
+      '<div class="muted">🏡 ' + dagKlaar + '/' + dagDoel + ' dagklusjes' + (weekModus ? ' (1x per week)' : '') + ' · 🧹 ' + weekGedaan + '/' + weekTaken.length + ' wekelijkse · ⭐ ' + puntenWeek + ' punten</div></summary>' +
       '<div class="chips">' + chips.join("") + '</div>' +
       (weekTaken.length ? '<ul>' + weekRijen + '</ul>' : "") +
       '<p class="muted">💶 Extra klusjes: ' + (extra.length ? extra.join(", ") : "geen") + '</p>' +
@@ -719,7 +736,8 @@ function render() {
     const klaar = g.taken.filter(t => gedaan.has(sleutel(t))).length;
     const h = document.createElement("h3");
     h.innerHTML = esc(g.titel) + ' <span class="count">' + klaar + ' / ' + g.taken.length + ' af</span>';
-    container.appendChild(h);
+    const inWeekModus = g.cat === "dag" && dagModus() === "week";
+    if (!inWeekModus) container.appendChild(h);
     const ul = document.createElement("ul");
     g.taken.forEach(t => {
       const isDone = gedaan.has(sleutel(t));
@@ -734,7 +752,20 @@ function render() {
         (isAdmin() ? '<button class="ghost small" data-act="deltask" data-id="' + esc(t.id) + '" title="Verwijderen">✕</button>' : "");
       ul.appendChild(li);
     });
-    container.appendChild(ul);
+    if (!inWeekModus) { container.appendChild(ul); return; }
+    // 1x per week: de lijst klapt dicht als alles is afgevinkt, en blijft open te klappen zolang de week duurt
+    const alles = klaar === g.taken.length;
+    const sleutelWeek = "dagweek-" + week();
+    const open = !voorbij && (handmatigOpen.hasOwnProperty(sleutelWeek) ? handmatigOpen[sleutelWeek] : !alles);
+    const det = document.createElement("details");
+    det.className = "week-blok";
+    det.dataset.week = sleutelWeek;
+    det.dataset.vast = voorbij ? "1" : "0";
+    if (open) det.open = true;
+    det.innerHTML = '<summary><strong>🏡 Dagelijkse klusjes</strong> <span class="count">' + klaar + ' / ' + g.taken.length + ' af</span>' +
+      (alles ? " ✅" : "") + (voorbij ? " · afgesloten" : "") + '</summary>';
+    det.appendChild(ul);
+    container.appendChild(det);
   });
   if (!S.tasks.length) {
     container.innerHTML = '<p class="empty">Nog geen klusjes.' + (isAdmin() ? ' Laad de standaardlijst in het beheerdeel.' : '') + '</p>';
@@ -782,6 +813,7 @@ function render() {
   $("#historyBox").hidden = !isAdmin();
   if (isAdmin()) {
     document.querySelectorAll("[data-view]").forEach(cb => { cb.checked = zicht[cb.dataset.view] !== false; });
+    $("#dagModus").value = dagModus();
 
     const pl = $("#pool");
     pl.innerHTML = S.pool.length ? "" : '<li class="empty">De pot is leeg.</li>';
