@@ -126,17 +126,17 @@ import {
   signInWithEmailAndPassword, signOut
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
-  getFirestore, collection, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot
+  initializeFirestore, collection, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ---- VUL HIER JE FIREBASE-CONFIGURATIE IN (Project settings > Your apps) ----
 const firebaseConfig = {
   apiKey: "AIzaSyABaBTi3P-yXocH2BHZv0jTUQ7Egt0hRq8",
-  authDomain: "VUL_IN",
-  projectId: "VUL_IN",
-  storageBucket: "VUL_IN",
-  messagingSenderId: "VUL_IN",
-  appId: "VUL_IN"
+  authDomain: "huisheld.firebaseapp.com",
+  projectId: "huisheld",
+  storageBucket: "huisheld.firebasestorage.app",
+  messagingSenderId: "556592485474",
+  appId: "1:556592485474:web:4a878287bd108679552d3b"
 };
 
 const $ = s => document.querySelector(s);
@@ -158,7 +158,7 @@ if (firebaseConfig.apiKey === "VUL_IN") {
 
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
-const db = getFirestore(fbApp);
+const db = initializeFirestore(fbApp, { experimentalForceLongPolling: true });
 
 // ---- Inloggen ----
 $("#loginForm").addEventListener("submit", async e => {
