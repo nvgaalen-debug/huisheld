@@ -56,7 +56,10 @@
   .chips { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
   .chip { font-size:.78rem; background:#f3f4f6; color:var(--muted); padding:4px 8px; border-radius:999px; }
   .chip.ok { background:#dcfce7; color:var(--ok); }
-  .week-blok { border-top:1px solid var(--line); padding-top:6px; margin-top:12px; }
+  .week-blok { border-top:1px solid var(--line); padding:6px 0; }
+  .week-blok summary { cursor:pointer; padding:8px 0; list-style:revert; }
+  .week-blok summary .muted { font-size:.85rem; }
+  .week-blok summary div { margin-top:2px; }
 </style>
 </head>
 <body>
@@ -248,6 +251,14 @@ function weekStart(n) {
   if (opgeslagen) return opgeslagen;
   const eerste = S.ledger.filter(l => weekNr(l) === n && l.at).map(l => l.at).sort((a, b) => a - b)[0];
   return eerste ? naarDatum(new Date(eerste)) : today();
+}
+// ISO-weeknummer van een datum (YYYY-MM-DD)
+function isoWeek(s) {
+  const d = dagDatum(s);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + 3);
+  const eersteDonderdag = new Date(d.getFullYear(), 0, 4);
+  eersteDonderdag.setDate(eersteDonderdag.getDate() - ((eersteDonderdag.getDay() + 6) % 7) + 3);
+  return 1 + Math.round((d - eersteDonderdag) / (7 * 86400000));
 }
 function weekDagen(n, start) {
   if (n !== week()) return 7;
@@ -458,6 +469,12 @@ $("#poolForm").addEventListener("submit", e => {
 });
 
 // ---- Weergave ----
+// Onthoudt wat de ouder zelf open- of dichtklapt, zodat een week niet vanzelf dichtspringt bij elke wijziging
+const handmatigOpen = {};
+document.addEventListener("toggle", e => {
+  if (e.target.dataset && e.target.dataset.week) handmatigOpen[e.target.dataset.week] = e.target.open;
+}, true);
+
 function renderHistorie() {
   const huidige = week();
   const dagTaken = S.tasks.filter(t => soort(t) === "dag");
@@ -486,13 +503,19 @@ function renderHistorie() {
     }).join("");
     const extra = extraTaken.filter(t => gedaan.has(t.id + "-w" + n)).map(t => esc(t.name));
     const lbl = startDatum.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
-    html += '<div class="week-blok">' +
-      '<h3>Week ' + n + ' <span class="count">vanaf ' + esc(lbl) + (n === huidige ? " · nu bezig" : "") + '</span></h3>' +
-      '<p class="muted">Punten verdiend: ' + puntenWeek + '</p>' +
+    const weekGedaan = weekTaken.filter(t => gedaan.has(t.id + "-w" + n)).length;
+    // Week is af als alle dag- en weekklusjes zijn gedaan; dan klapt de lijst dicht
+    const compleet = (dagTaken.length + weekTaken.length) > 0 &&
+      (dagTaken.length === 0 || dagLedger.length >= dagTaken.length * dagen) &&
+      weekGedaan === weekTaken.length;
+    const open = handmatigOpen.hasOwnProperty(n) ? handmatigOpen[n] : (n === huidige && !compleet);
+    html += '<details class="week-blok" data-week="' + n + '"' + (open ? " open" : "") + '>' +
+      '<summary><strong>Week ' + n + '</strong> · weeknummer ' + isoWeek(start) + ' <span class="muted">vanaf ' + esc(lbl) + (n === huidige ? " · nu bezig" : "") + '</span>' +
+      '<div class="muted">🏡 ' + dagLedger.length + '/' + (dagTaken.length * dagen) + ' dagklusjes · 🧹 ' + weekGedaan + '/' + weekTaken.length + ' wekelijkse · ⭐ ' + puntenWeek + ' punten</div></summary>' +
       '<div class="chips">' + chips.join("") + '</div>' +
       (weekTaken.length ? '<ul>' + weekRijen + '</ul>' : "") +
       '<p class="muted">💶 Extra klusjes: ' + (extra.length ? extra.join(", ") : "geen") + '</p>' +
-      '</div>';
+      '</details>';
   }
   $("#history").innerHTML = html || '<p class="empty">Nog geen weken.</p>';
 }
@@ -501,7 +524,7 @@ function render() {
   if (!S.role) return;
   $("#role").textContent = (isAdmin() ? "Ouder-weergave" : "Tiener-weergave") + " · ingelogd als " + (auth.currentUser ? auth.currentUser.email : "");
   $("#balance").textContent = balance();
-  $("#weekLbl").textContent = "Week " + week() + " · totaal verdiend: " + earned() + " punten";
+  $("#weekLbl").textContent = "Week " + week() + " (weeknummer " + isoWeek(today()) + ") · totaal verdiend: " + earned() + " punten";
   $("#taskPts").hidden = !isAdmin();
   const zicht = zichtInstellingen();
   $("#planTitle").closest("section").hidden = !isAdmin() && zicht.planning === false;
