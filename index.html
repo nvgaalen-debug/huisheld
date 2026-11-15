@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Huisheld</title>
 <style>
-  :root { --bg:#f5f6fa; --card:#fff; --ink:#1d2433; --muted:#6b7280; --accent:#6c5ce7; --ok:#00b894; --warn:#e17055; --line:#e5e7eb; }
+  :root { --bg:#f5f6fa; --card:#fff; --ink:#1d2433; --muted:#6b7280; --accent:#6c5ce7; --ok:#16a34a; --warn:#e17055; --line:#e5e7eb; }
   * { box-sizing:border-box; }
   [hidden] { display:none !important; }
   body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
@@ -17,15 +17,14 @@
   @media (max-width:800px){ main { grid-template-columns:1fr; } }
   .card { background:var(--card); border-radius:14px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
   .card h2 { margin:0 0 12px; font-size:1.05rem; }
-  .card h3 { margin:12px 0 8px; font-size:.95rem; }
+  .card h3 { margin:14px 0 6px; font-size:.95rem; display:flex; justify-content:space-between; align-items:center; gap:8px; }
   .login { max-width:420px; margin:32px auto; }
   .score { font-size:2.2rem; font-weight:700; color:var(--accent); }
   .muted { color:var(--muted); font-size:.85rem; }
   form { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
   .login form { flex-direction:column; }
-  input { padding:10px; border:1px solid var(--line); border-radius:10px; font-size:.95rem; flex:1; min-width:0; }
+  input, select { padding:10px; border:1px solid var(--line); border-radius:10px; font-size:.95rem; flex:1; min-width:0; background:#fff; }
   input[type=number] { flex:0 0 90px; }
-  input[type=checkbox] { width:20px; height:20px; flex:0 0 auto; }
   button { padding:10px 14px; border:0; border-radius:10px; background:var(--accent); color:#fff; font-weight:600; cursor:pointer; font-size:.9rem; }
   button:disabled { opacity:.4; cursor:not-allowed; }
   button.ghost { background:#eef0f6; color:var(--ink); }
@@ -33,16 +32,25 @@
   ul { list-style:none; margin:0; padding:0; }
   li { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 0; border-bottom:1px solid var(--line); }
   li:last-child { border-bottom:0; }
+  li.done { background:#f0fdf4; border-radius:10px; padding-left:8px; padding-right:8px; }
   li.done .name { text-decoration:line-through; color:var(--muted); }
   .grow { flex:1; min-width:0; }
   .row { display:flex; gap:8px; align-items:center; }
+  .check { cursor:pointer; display:flex; align-items:center; gap:10px; min-width:0; }
+  .check input { width:24px; height:24px; flex:0 0 auto; accent-color:var(--ok); cursor:pointer; }
   .pts { background:#eef0ff; color:var(--accent); font-weight:700; padding:3px 9px; border-radius:999px; font-size:.85rem; white-space:nowrap; }
+  li.done .pts { background:#dcfce7; color:var(--ok); }
+  .label { font-size:.8rem; color:var(--muted); white-space:nowrap; }
+  .count { font-size:.8rem; color:var(--muted); font-weight:500; }
   .empty { color:var(--muted); font-style:italic; }
   .status { min-height:1.2em; margin:4px 16px 16px; font-size:.9rem; color:var(--ok); }
   .status.err { color:var(--warn); }
   .admin { border:2px dashed #d7d3ff; }
   .grid2 { display:grid; gap:16px; grid-template-columns:1fr 1fr; }
   @media (max-width:800px){ .grid2 { grid-template-columns:1fr; } }
+  table { width:100%; border-collapse:collapse; font-size:.92rem; }
+  td { padding:8px 6px; border-bottom:1px solid var(--line); }
+  td:first-child { font-weight:600; width:35%; color:var(--accent); }
 </style>
 </head>
 <body>
@@ -82,13 +90,32 @@
   </section>
 
   <section class="card wide">
-    <h2>Klusjes deze week</h2>
+    <h2>Mijn klusjes</h2>
+    <p class="muted" style="margin-top:-6px">Vink een klusje af als het gedaan is. Dagelijkse klusjes worden elke dag opnieuw open gezet, wekelijkse klusjes elke week.</p>
     <form id="taskForm">
-      <input id="taskName" placeholder="Bijv. afwas, stofzuigen, boodschappen" maxlength="60" required>
-      <input id="taskPts" type="number" min="1" value="5" aria-label="Punten">
+      <input id="taskName" placeholder="Nieuw klusje, bijv. afwas" maxlength="60" required>
+      <select id="taskCat" aria-label="Soort klusje">
+        <option value="dag">Dagelijks</option>
+        <option value="week">Wekelijks</option>
+        <option value="extra">Extra (los beloond)</option>
+      </select>
+      <input id="taskPts" type="number" min="1" value="2" aria-label="Punten">
       <button type="submit">+ Klusje</button>
     </form>
-    <ul id="tasks"></ul>
+    <div id="taskGroups"></div>
+  </section>
+
+  <section class="card wide">
+    <h2>📅 Voorbeeld weekplanning</h2>
+    <table>
+      <tr><td>Maandag</td><td>Afwasmachine uitruimen</td></tr>
+      <tr><td>Dinsdag</td><td>Stofzuigen</td></tr>
+      <tr><td>Woensdag</td><td>Was opvouwen</td></tr>
+      <tr><td>Donderdag</td><td>Badkamer schoonmaken</td></tr>
+      <tr><td>Vrijdag</td><td>Eigen kamer opruimen</td></tr>
+      <tr><td>Zaterdag</td><td>Helpen met koken</td></tr>
+      <tr><td>Zondag</td><td>Eigen bed verschonen</td></tr>
+    </table>
   </section>
 
   <section class="card wide admin" id="adminBox" hidden>
@@ -104,13 +131,16 @@
         <ul id="pool"></ul>
       </div>
       <div>
+        <h3>Klusjeslijst</h3>
+        <button class="ghost" data-act="import">Standaard klusjeslijst laden</button>
+        <p class="muted">Zet de standaardklusjes in de app. Dat kun je meerdere keren doen zonder dubbele klusjes.</p>
         <h3>Instellingen</h3>
         <form id="boxForm">
           <input id="boxCost" type="number" min="1" value="50" aria-label="Prijs van de doos">
           <button type="submit" class="ghost">Prijs opslaan</button>
         </form>
         <button class="ghost" data-act="newweek">Nieuwe week starten</button>
-        <p class="muted">Een nieuwe week zet de weekklusjes terug op open. Het saldo blijft staan.</p>
+        <p class="muted">Een nieuwe week zet de wekelijkse klusjes terug op open. Het saldo blijft staan.</p>
         <h3>Open verzoeken</h3>
         <ul id="open"></ul>
       </div>
@@ -129,7 +159,7 @@ import {
   initializeFirestore, collection, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// ---- VUL HIER JE FIREBASE-CONFIGURATIE IN (Project settings > Your apps) ----
+// ---- Firebase-configuratie ----
 const firebaseConfig = {
   apiKey: "AIzaSyABaBTi3P-yXocH2BHZv0jTUQ7Egt0hRq8",
   authDomain: "huisheld.firebaseapp.com",
@@ -139,6 +169,39 @@ const firebaseConfig = {
   appId: "1:556592485474:web:4a878287bd108679552d3b"
 };
 
+// Standaardlijst: [id, naam, soort, punten, label]
+const STANDAARD = [
+  ["d1", "Eigen kamer netjes houden", "dag", 2],
+  ["d2", "Bed opmaken", "dag", 2],
+  ["d3", "Vuile was in de wasmand doen", "dag", 2],
+  ["d4", "Eigen kleding opruimen", "dag", 2],
+  ["d5", "Tafel dekken en afruimen", "dag", 3],
+  ["d6", "Afwasmachine in- en uitruimen", "dag", 3],
+  ["d7", "Keukenblad schoonmaken", "dag", 2],
+  ["d8", "Afval wegbrengen", "dag", 2],
+  ["d9", "Eigen spullen opruimen", "dag", 2],
+  ["w1", "Stofzuigen van de woonkamer", "week", 5],
+  ["w2", "Badkamer schoonmaken", "week", 5],
+  ["w3", "Eigen bed verschonen", "week", 3],
+  ["w4", "Was ophangen of opvouwen", "week", 3],
+  ["w5", "Boodschappen helpen opruimen", "week", 3],
+  ["w6", "Toilet schoonmaken", "week", 5],
+  ["w7", "Vloer dweilen", "week", 5],
+  ["w8", "Koken voor het gezin (1x per week)", "week", 10],
+  ["e1", "Auto wassen", "extra", 10, "€5–10"],
+  ["e2", "Ramen zemen", "extra", 10, "€5–10"],
+  ["e3", "Hele badkamer schoonmaken", "extra", 10, "€5"],
+  ["e4", "Extra grote schoonmaak", "extra", 10, "€5–10"],
+  ["e5", "Oppassen", "extra", 10, "in overleg"],
+  ["e6", "Tuinwerkzaamheden", "extra", 10, "€5–10"]
+];
+
+const GROEPEN = [
+  { cat: "dag", titel: "🏡 Dagelijkse klusjes" },
+  { cat: "week", titel: "🧹 Wekelijkse klusjes" },
+  { cat: "extra", titel: "💶 Extra klusjes (los beloond)" }
+];
+
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 const newId = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -146,18 +209,19 @@ const setStatus = (msg, err) => { const el = $("#status"); el.textContent = msg 
 
 const S = { tasks: [], ledger: [], claims: [], pool: [], config: {}, role: null, unsubs: [] };
 const week = () => Number(S.config.week && S.config.week.n) || 1;
+const today = () => new Date().toLocaleDateString("sv-SE");
 const boxCost = () => Number(S.config.box && S.config.box.cost) || 50;
 const earned = () => S.ledger.reduce((s, l) => s + (Number(l.pts) || 0), 0);
 const spent = () => S.claims.reduce((s, c) => s + (Number(c.cost) || 0), 0);
 const balance = () => earned() - spent();
 const isAdmin = () => S.role === "admin";
-
-if (firebaseConfig.apiKey === "VUL_IN") {
-  setStatus("Vul eerst je Firebase-configuratie in index.html in.", true);
-}
+const soort = t => t.cat || "dag";
+// Dagelijkse klusjes reset per dag, de rest per week
+const sleutel = t => t.id + (soort(t) === "dag" ? "-d" + today() : "-w" + week());
 
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
+// Long polling: werkt beter achter netwerken en extensies die Firestore blokkeren
 const db = initializeFirestore(fbApp, { experimentalForceLongPolling: true });
 
 // ---- Inloggen ----
@@ -240,14 +304,15 @@ async function run(fn, ok) {
 
 // ---- Acties ----
 function toggle(taskId) {
-  const wk = week();
-  const key = taskId + "-" + wk;
+  const task = S.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  const key = sleutel(task);
   const isDone = S.ledger.some(l => l.id === key);
-  const pts = Number((S.tasks.find(t => t.id === taskId) || {}).pts) || 0;
+  const pts = Number(task.pts) || 0;
   const ref = doc(db, "ledger", key);
   run(
-    () => isDone ? deleteDoc(ref) : setDoc(ref, { task: taskId, week: wk, pts, at: Date.now() }),
-    isDone ? "Klusje weer open (punten teruggedraaid)" : "Klusje gedaan! +" + pts + " punten"
+    () => isDone ? deleteDoc(ref) : setDoc(ref, { task: taskId, pts, at: Date.now() }),
+    isDone ? "Klusje weer open (punten teruggedraaid)" : "Goed gedaan! +" + pts + " punten ✅"
   );
 }
 
@@ -267,6 +332,13 @@ function reveal(claimId) {
   }, "Verrassing gegeven!");
 }
 
+function importeer() {
+  run(async () => {
+    await Promise.all(STANDAARD.map(([id, name, cat, pts, label]) =>
+      setDoc(doc(db, "tasks", id), { name, cat, pts, label: label || "" })));
+  }, "Standaard klusjeslijst geladen ✅");
+}
+
 document.addEventListener("change", e => {
   if (e.target.dataset && e.target.dataset.act === "toggle") toggle(e.target.dataset.id);
 });
@@ -277,6 +349,7 @@ document.addEventListener("click", e => {
   const id = b.dataset.id;
   switch (b.dataset.act) {
     case "buy": return buy();
+    case "import": return importeer();
     case "deltask": return run(() => deleteDoc(doc(db, "tasks", id)), "Klusje verwijderd");
     case "delpool": return run(() => deleteDoc(doc(db, "pool", id)), "Verwijderd uit de pot");
     case "reveal": return reveal(id);
@@ -287,11 +360,12 @@ document.addEventListener("click", e => {
 $("#taskForm").addEventListener("submit", e => {
   e.preventDefault();
   const name = $("#taskName").value.trim();
+  const cat = $("#taskCat").value;
   const pts = Math.max(1, parseInt($("#taskPts").value, 10) || 1);
   if (!name) return;
-  run(() => setDoc(doc(db, "tasks", newId("t")), { name, pts }), "Klusje toegevoegd");
+  run(() => setDoc(doc(db, "tasks", newId("t")), { name, cat, pts, label: "" }), "Klusje toegevoegd");
   e.target.reset();
-  $("#taskPts").value = 5;
+  $("#taskPts").value = 2;
 });
 
 $("#poolForm").addEventListener("submit", e => {
@@ -313,26 +387,44 @@ $("#boxForm").addEventListener("submit", e => {
 // ---- Weergave ----
 function render() {
   if (!S.role) return;
-  const wk = week();
   $("#role").textContent = (isAdmin() ? "Ouder-weergave" : "Tiener-weergave") + " · ingelogd als " + (auth.currentUser ? auth.currentUser.email : "");
   $("#balance").textContent = balance();
-  $("#weekLbl").textContent = "Week " + wk + " · totaal verdiend: " + earned() + " punten";
+  $("#weekLbl").textContent = "Week " + week() + " · totaal verdiend: " + earned() + " punten";
 
-  const done = new Set(S.ledger.map(l => l.id));
-  const tl = $("#tasks");
-  tl.innerHTML = S.tasks.length ? "" : '<li class="empty">Nog geen klusjes.</li>';
-  S.tasks.forEach(t => {
-    const isDone = done.has(t.id + "-" + wk);
-    const li = document.createElement("li");
-    if (isDone) li.classList.add("done");
-    li.innerHTML =
-      '<label class="row grow" style="cursor:pointer">' +
-      '<input type="checkbox" data-act="toggle" data-id="' + esc(t.id) + '"' + (isDone ? " checked" : "") + '>' +
-      '<span class="name">' + esc(t.name) + '</span></label>' +
-      '<span class="pts">' + (Number(t.pts) || 0) + ' pt</span>' +
-      (isAdmin() ? '<button class="ghost small" data-act="deltask" data-id="' + esc(t.id) + '" title="Verwijderen">✕</button>' : "");
-    tl.appendChild(li);
+  const gedaan = new Set(S.ledger.map(l => l.id));
+  const container = $("#taskGroups");
+  container.innerHTML = "";
+  const bekend = new Set(GROEPEN.map(g => g.cat));
+
+  const groepen = GROEPEN.map(g => ({ ...g, taken: S.tasks.filter(t => soort(t) === g.cat) }));
+  const overig = S.tasks.filter(t => !bekend.has(soort(t)));
+  if (overig.length) groepen.push({ cat: "overig", titel: "Overige klusjes", taken: overig });
+
+  groepen.forEach(g => {
+    if (!g.taken.length) return;
+    const klaar = g.taken.filter(t => gedaan.has(sleutel(t))).length;
+    const h = document.createElement("h3");
+    h.innerHTML = esc(g.titel) + ' <span class="count">' + klaar + ' / ' + g.taken.length + ' af</span>';
+    container.appendChild(h);
+    const ul = document.createElement("ul");
+    g.taken.forEach(t => {
+      const isDone = gedaan.has(sleutel(t));
+      const li = document.createElement("li");
+      if (isDone) li.classList.add("done");
+      li.innerHTML =
+        '<label class="check grow">' +
+          '<input type="checkbox" data-act="toggle" data-id="' + esc(t.id) + '"' + (isDone ? " checked" : "") + '>' +
+          '<span class="name">' + esc(t.name) + (isDone ? " ✅" : "") + '</span></label>' +
+        (t.label ? '<span class="label">' + esc(t.label) + '</span>' : "") +
+        '<span class="pts">' + (Number(t.pts) || 0) + ' pt</span>' +
+        (isAdmin() ? '<button class="ghost small" data-act="deltask" data-id="' + esc(t.id) + '" title="Verwijderen">✕</button>' : "");
+      ul.appendChild(li);
+    });
+    container.appendChild(ul);
   });
+  if (!S.tasks.length) {
+    container.innerHTML = '<p class="empty">Nog geen klusjes.' + (isAdmin() ? ' Laad de standaardlijst in het beheerdeel.' : '') + '</p>';
+  }
 
   const cl = $("#claims");
   cl.innerHTML = S.claims.length ? "" : '<li class="empty">Nog geen verrassingen gekocht.</li>';
