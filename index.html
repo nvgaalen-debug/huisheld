@@ -51,6 +51,8 @@
   table { width:100%; border-collapse:collapse; font-size:.92rem; }
   td { padding:8px 6px; border-bottom:1px solid var(--line); }
   td:first-child { font-weight:600; width:35%; color:var(--accent); }
+  .viewset label { display:flex; gap:8px; align-items:center; margin:6px 0; cursor:pointer; }
+  .viewset input { width:18px; height:18px; accent-color:var(--ok); flex:0 0 auto; }
 </style>
 </head>
 <body>
@@ -82,10 +84,8 @@
 
   <section class="card">
     <h2>Verrassingsdoos</h2>
-    <div class="muted">Wat erin zit weet je pas als je ouder hem geeft.</div>
-    <div style="margin:12px 0">
-      <button id="buyBtn" data-act="buy">Koop verrassing</button>
-    </div>
+    <div class="muted">Kies een doos. Wat erin zit weet je pas als je ouder hem geeft.</div>
+    <div id="buyBtns" class="row" style="flex-wrap:wrap; gap:8px; margin:12px 0"></div>
     <ul id="claims"></ul>
   </section>
 
@@ -106,7 +106,7 @@
   </section>
 
   <section class="card wide">
-    <h2>📅 Voorbeeld weekplanning</h2>
+    <h2 id="planTitle">📅 Voorbeeld weekplanning</h2>
     <table>
       <tr><td>Maandag</td><td>Afwasmachine uitruimen</td></tr>
       <tr><td>Dinsdag</td><td>Stofzuigen</td></tr>
@@ -123,9 +123,10 @@
     <div class="grid2">
       <div>
         <h3>Verrassingen in de pot</h3>
-        <p class="muted">De tiener ziet deze lijst niet. Bij een verzoek kies jij er één uit.</p>
+        <p class="muted">De tiener ziet de inhoud niet. Elke verrassing heeft een prijs, en de tiener kiest een doos met die prijs.</p>
         <form id="poolForm">
-          <input id="poolText" placeholder="Bijv. pizza-avond, nieuwe nagellak" maxlength="100" required>
+          <input id="poolText" placeholder="Bijv. pizza-avond, bol.com bon" maxlength="100" required>
+          <input id="poolCost" type="number" min="1" value="50" aria-label="Prijs in punten" style="flex:0 0 90px">
           <button type="submit">+ Toevoegen</button>
         </form>
         <ul id="pool"></ul>
@@ -134,11 +135,15 @@
         <h3>Klusjeslijst</h3>
         <button class="ghost" data-act="import">Standaard klusjeslijst laden</button>
         <p class="muted">Zet de standaardklusjes in de app. Dat kun je meerdere keren doen zonder dubbele klusjes.</p>
-        <h3>Instellingen</h3>
-        <form id="boxForm">
-          <input id="boxCost" type="number" min="1" value="50" aria-label="Prijs van de doos">
-          <button type="submit" class="ghost">Prijs opslaan</button>
-        </form>
+        <h3>Wat ziet je kind?</h3>
+        <p class="muted">Vink aan wat de tiener mag zien. Verborgen onderdelen blijven voor jou gewoon zichtbaar.</p>
+        <div class="viewset">
+          <label><input type="checkbox" data-view="dag"> 🏡 Dagelijkse klusjes</label>
+          <label><input type="checkbox" data-view="week"> 🧹 Wekelijkse klusjes</label>
+          <label><input type="checkbox" data-view="extra"> 💶 Extra klusjes</label>
+          <label><input type="checkbox" data-view="planning"> 📅 Weekplanning</label>
+        </div>
+        <h3>Week</h3>
         <button class="ghost" data-act="newweek">Nieuwe week starten</button>
         <p class="muted">Een nieuwe week zet de wekelijkse klusjes terug op open. Het saldo blijft staan.</p>
         <h3>Open verzoeken</h3>
@@ -202,6 +207,9 @@ const GROEPEN = [
   { cat: "extra", titel: "💶 Extra klusjes (los beloond)" }
 ];
 
+// Vaste punten voor klusjes die de tiener zelf toevoegt
+const VASTE_PUNTEN = { dag: 2, week: 5, extra: 10 };
+
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 const newId = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -210,14 +218,15 @@ const setStatus = (msg, err) => { const el = $("#status"); el.textContent = msg 
 const S = { tasks: [], ledger: [], claims: [], pool: [], config: {}, role: null, unsubs: [] };
 const week = () => Number(S.config.week && S.config.week.n) || 1;
 const today = () => new Date().toLocaleDateString("sv-SE");
-const boxCost = () => Number(S.config.box && S.config.box.cost) || 50;
 const earned = () => S.ledger.reduce((s, l) => s + (Number(l.pts) || 0), 0);
 const spent = () => S.claims.reduce((s, c) => s + (Number(c.cost) || 0), 0);
 const balance = () => earned() - spent();
 const isAdmin = () => S.role === "admin";
 const soort = t => t.cat || "dag";
+const zichtInstellingen = () => Object.assign({ dag: true, week: true, extra: true, planning: true }, S.config.view || {});
 // Dagelijkse klusjes reset per dag, de rest per week
 const sleutel = t => t.id + (soort(t) === "dag" ? "-d" + today() : "-w" + week());
+const prijsVan = p => Number(p.cost) || 50;
 
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
@@ -316,20 +325,39 @@ function toggle(taskId) {
   );
 }
 
-function buy() {
-  const cost = boxCost();
-  if (balance() < cost) return setStatus("Nog niet genoeg punten.", true);
+function buy(cost) {
+  if (balance() < cost) return setStatus("Nog niet genoeg punten voor deze doos.", true);
   run(() => setDoc(doc(db, "claims", newId("c")), { cost, at: Date.now(), reveal: "" }),
       "Verzoek verstuurd. Je ouder geeft de verrassing.");
 }
 
+// Kiest een willekeurige verrassing met dezelfde prijs als de gekochte doos
 function reveal(claimId) {
-  if (!S.pool.length) return setStatus("De pot is leeg.", true);
-  const item = S.pool[Math.floor(Math.random() * S.pool.length)];
+  const claim = S.claims.find(c => c.id === claimId);
+  if (!claim) return;
+  const opties = S.pool.filter(p => prijsVan(p) === Number(claim.cost));
+  if (!opties.length) return setStatus("Er zit geen verrassing van " + claim.cost + " pt meer in de pot.", true);
+  const item = opties[Math.floor(Math.random() * opties.length)];
   run(async () => {
     await updateDoc(doc(db, "claims", claimId), { reveal: item.text, revealedAt: Date.now() });
     await deleteDoc(doc(db, "pool", item.id));
   }, "Verrassing gegeven!");
+}
+
+// Slaat de beschikbare prijzen op, zodat de tiener alleen de juiste knoppen ziet
+function kostenUitPot() {
+  return [...new Set(S.pool.map(prijsVan))].sort((a, b) => a - b);
+}
+let laatsteSync = "";
+function syncKosten() {
+  if (!isAdmin() || !db) return;
+  const nu = kostenUitPot();
+  const sleutelK = JSON.stringify(nu);
+  const opgeslagen = JSON.stringify((S.config.tiers && S.config.tiers.costs) || []);
+  if (sleutelK !== opgeslagen && sleutelK !== laatsteSync) {
+    laatsteSync = sleutelK;
+    setDoc(doc(db, "config", "tiers"), { costs: nu }).catch(() => {});
+  }
 }
 
 function importeer() {
@@ -341,6 +369,12 @@ function importeer() {
 
 document.addEventListener("change", e => {
   if (e.target.dataset && e.target.dataset.act === "toggle") toggle(e.target.dataset.id);
+  if (e.target.dataset && e.target.dataset.view && isAdmin()) {
+    const onderdeel = e.target.dataset.view;
+    const huidig = zichtInstellingen();
+    run(() => setDoc(doc(db, "config", "view"), Object.assign({}, huidig, { [onderdeel]: e.target.checked })),
+        "Zichtbaarheid opgeslagen");
+  }
 });
 
 document.addEventListener("click", e => {
@@ -348,10 +382,12 @@ document.addEventListener("click", e => {
   if (!b || b.tagName === "INPUT") return;
   const id = b.dataset.id;
   switch (b.dataset.act) {
-    case "buy": return buy();
+    case "buy": return buy(Number(b.dataset.cost));
     case "import": return importeer();
     case "deltask": return run(() => deleteDoc(doc(db, "tasks", id)), "Klusje verwijderd");
-    case "delpool": return run(() => deleteDoc(doc(db, "pool", id)), "Verwijderd uit de pot");
+    case "delpool": return run(async () => {
+      await deleteDoc(doc(db, "pool", id));
+    }, "Verwijderd uit de pot");
     case "reveal": return reveal(id);
     case "newweek": return run(() => setDoc(doc(db, "config", "week"), { n: week() + 1 }), "Nieuwe week gestart");
   }
@@ -361,7 +397,7 @@ $("#taskForm").addEventListener("submit", e => {
   e.preventDefault();
   const name = $("#taskName").value.trim();
   const cat = $("#taskCat").value;
-  const pts = Math.max(1, parseInt($("#taskPts").value, 10) || 1);
+  const pts = isAdmin() ? Math.max(1, parseInt($("#taskPts").value, 10) || 1) : VASTE_PUNTEN[cat];
   if (!name) return;
   run(() => setDoc(doc(db, "tasks", newId("t")), { name, cat, pts, label: "" }), "Klusje toegevoegd");
   e.target.reset();
@@ -372,16 +408,11 @@ $("#poolForm").addEventListener("submit", e => {
   e.preventDefault();
   if (!isAdmin()) return;
   const text = $("#poolText").value.trim();
+  const cost = Math.max(1, parseInt($("#poolCost").value, 10) || 50);
   if (!text) return;
-  run(() => setDoc(doc(db, "pool", newId("p")), { text, at: Date.now() }), "Toegevoegd aan de pot");
+  run(() => setDoc(doc(db, "pool", newId("p")), { text, cost, at: Date.now() }), "Toegevoegd aan de pot");
   e.target.reset();
-});
-
-$("#boxForm").addEventListener("submit", e => {
-  e.preventDefault();
-  if (!isAdmin()) return;
-  const cost = Math.max(1, parseInt($("#boxCost").value, 10) || 1);
-  run(() => setDoc(doc(db, "config", "box"), { cost }), "Prijs opgeslagen");
+  $("#poolCost").value = 50;
 });
 
 // ---- Weergave ----
@@ -390,18 +421,22 @@ function render() {
   $("#role").textContent = (isAdmin() ? "Ouder-weergave" : "Tiener-weergave") + " · ingelogd als " + (auth.currentUser ? auth.currentUser.email : "");
   $("#balance").textContent = balance();
   $("#weekLbl").textContent = "Week " + week() + " · totaal verdiend: " + earned() + " punten";
+  $("#taskPts").hidden = !isAdmin();
+  const zicht = zichtInstellingen();
+  $("#planTitle").closest("section").hidden = !isAdmin() && zicht.planning === false;
 
+  // Klusjes per groep
   const gedaan = new Set(S.ledger.map(l => l.id));
   const container = $("#taskGroups");
   container.innerHTML = "";
   const bekend = new Set(GROEPEN.map(g => g.cat));
-
   const groepen = GROEPEN.map(g => ({ ...g, taken: S.tasks.filter(t => soort(t) === g.cat) }));
   const overig = S.tasks.filter(t => !bekend.has(soort(t)));
   if (overig.length) groepen.push({ cat: "overig", titel: "Overige klusjes", taken: overig });
 
   groepen.forEach(g => {
     if (!g.taken.length) return;
+    if (!isAdmin() && zicht[g.cat] === false) return;
     const klaar = g.taken.filter(t => gedaan.has(sleutel(t))).length;
     const h = document.createElement("h3");
     h.innerHTML = esc(g.titel) + ' <span class="count">' + klaar + ' / ' + g.taken.length + ' af</span>';
@@ -426,30 +461,44 @@ function render() {
     container.innerHTML = '<p class="empty">Nog geen klusjes.' + (isAdmin() ? ' Laad de standaardlijst in het beheerdeel.' : '') + '</p>';
   }
 
+  // Verrassingsdozen: knoppen per beschikbare prijs
+  const kosten = (S.config.tiers && S.config.tiers.costs) || [];
+  const bb = $("#buyBtns");
+  bb.innerHTML = "";
+  if (!kosten.length) {
+    bb.innerHTML = '<span class="muted">Er zitten nu geen verrassingen in de pot.</span>';
+  }
+  kosten.forEach(k => {
+    const b = document.createElement("button");
+    b.textContent = "Doos van " + k + " pt";
+    b.dataset.act = "buy";
+    b.dataset.cost = k;
+    b.disabled = balance() < k;
+    bb.appendChild(b);
+  });
+
+  // Gekochte verrassingen
   const cl = $("#claims");
   cl.innerHTML = S.claims.length ? "" : '<li class="empty">Nog geen verrassingen gekocht.</li>';
   S.claims.forEach(c => {
     const li = document.createElement("li");
     li.innerHTML = c.reveal
       ? '<span>🎁 <strong>' + esc(c.reveal) + '</strong></span>'
-      : '<span class="muted">⏳ Wacht op de verrassing van je ouder</span>';
+      : '<span class="muted">⏳ Doos van ' + (Number(c.cost) || 0) + ' pt, wacht op je ouder</span>';
     cl.appendChild(li);
   });
 
-  const buyBtn = $("#buyBtn");
-  buyBtn.textContent = "Koop verrassing (" + boxCost() + " pt)";
-  buyBtn.disabled = balance() < boxCost();
-
   $("#adminBox").hidden = !isAdmin();
   if (isAdmin()) {
-    if (document.activeElement !== $("#boxCost")) $("#boxCost").value = boxCost();
+    document.querySelectorAll("[data-view]").forEach(cb => { cb.checked = zicht[cb.dataset.view] !== false; });
 
     const pl = $("#pool");
     pl.innerHTML = S.pool.length ? "" : '<li class="empty">De pot is leeg.</li>';
     S.pool.forEach(p => {
       const li = document.createElement("li");
       li.innerHTML = '<span>' + esc(p.text) + '</span>' +
-        '<button class="ghost small" data-act="delpool" data-id="' + esc(p.id) + '">✕</button>';
+        '<span class="row"><span class="pts">' + prijsVan(p) + ' pt</span>' +
+        '<button class="ghost small" data-act="delpool" data-id="' + esc(p.id) + '">✕</button></span>';
       pl.appendChild(li);
     });
 
@@ -457,11 +506,14 @@ function render() {
     const ol = $("#open");
     ol.innerHTML = open.length ? "" : '<li class="empty">Geen open verzoeken.</li>';
     open.forEach(c => {
+      const kan = S.pool.some(p => prijsVan(p) === Number(c.cost));
       const li = document.createElement("li");
-      li.innerHTML = '<span class="muted">' + new Date(c.at || 0).toLocaleString("nl-NL") + '</span>' +
-        '<button class="small" data-act="reveal" data-id="' + esc(c.id) + '"' + (S.pool.length ? "" : " disabled") + '>Geef verrassing</button>';
+      li.innerHTML = '<span class="muted">Doos van ' + (Number(c.cost) || 0) + ' pt</span>' +
+        '<button class="small" data-act="reveal" data-id="' + esc(c.id) + '"' + (kan ? "" : " disabled") + '>Geef verrassing</button>';
       ol.appendChild(li);
     });
+
+    syncKosten();
   }
 }
 </script>
