@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Huisheld</title>
+<style>
+  :root { --bg:#f5f6fa; --card:#fff; --ink:#1d2433; --muted:#6b7280; --accent:#6c5ce7; --ok:#00b894; --warn:#e17055; --line:#e5e7eb; }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  header { background:linear-gradient(135deg,#6c5ce7,#a29bfe); color:#fff; padding:20px 16px; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+  header h1 { margin:0; font-size:1.4rem; }
+  header p { margin:4px 0 0; opacity:.9; font-size:.9rem; }
+  main { max-width:900px; margin:0 auto; padding:16px; display:grid; gap:16px; grid-template-columns:1fr 1fr; }
+  .wide { grid-column:1 / -1; }
+  @media (max-width:800px){ main { grid-template-columns:1fr; } }
+  .card { background:var(--card); border-radius:14px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .card h2 { margin:0 0 12px; font-size:1.05rem; }
+  .card h3 { margin:12px 0 8px; font-size:.95rem; }
+  .login { max-width:420px; margin:32px auto; }
+  .score { font-size:2.2rem; font-weight:700; color:var(--accent); }
+  .muted { color:var(--muted); font-size:.85rem; }
+  form { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+  .login form { flex-direction:column; }
+  input { padding:10px; border:1px solid var(--line); border-radius:10px; font-size:.95rem; flex:1; min-width:0; }
+  input[type=number] { flex:0 0 90px; }
+  input[type=checkbox] { width:20px; height:20px; flex:0 0 auto; }
+  button { padding:10px 14px; border:0; border-radius:10px; background:var(--accent); color:#fff; font-weight:600; cursor:pointer; font-size:.9rem; }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  button.ghost { background:#eef0f6; color:var(--ink); }
+  button.small { padding:6px 10px; font-size:.8rem; }
+  ul { list-style:none; margin:0; padding:0; }
+  li { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 0; border-bottom:1px solid var(--line); }
+  li:last-child { border-bottom:0; }
+  li.done .name { text-decoration:line-through; color:var(--muted); }
+  .grow { flex:1; min-width:0; }
+  .row { display:flex; gap:8px; align-items:center; }
+  .pts { background:#eef0ff; color:var(--accent); font-weight:700; padding:3px 9px; border-radius:999px; font-size:.85rem; white-space:nowrap; }
+  .empty { color:var(--muted); font-style:italic; }
+  .status { min-height:1.2em; margin:4px 16px 16px; font-size:.9rem; color:var(--ok); }
+  .status.err { color:var(--warn); }
+  .admin { border:2px dashed #d7d3ff; }
+  .grid2 { display:grid; gap:16px; grid-template-columns:1fr 1fr; }
+  @media (max-width:800px){ .grid2 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🏠 Huisheld</h1>
+    <p id="role">Laden…</p>
+  </div>
+  <button id="logout" class="ghost small" hidden>Uitloggen</button>
+</header>
+
+<section id="login" class="card login" hidden>
+  <h2>Inloggen</h2>
+  <form id="loginForm">
+    <input id="email" type="email" placeholder="E-mailadres" autocomplete="email" required>
+    <input id="pw" type="password" placeholder="Wachtwoord (minimaal 6 tekens)" minlength="6" autocomplete="current-password" required>
+    <button type="submit">Inloggen</button>
+    <button type="button" id="signup" class="ghost">Nieuw account maken</button>
+  </form>
+  <div id="loginMsg" class="muted"></div>
+</section>
+
+<main id="app" hidden>
+  <section class="card">
+    <h2>Punten</h2>
+    <div class="score" id="balance">0</div>
+    <div class="muted" id="weekLbl"></div>
+  </section>
+
+  <section class="card">
+    <h2>Verrassingsdoos</h2>
+    <div class="muted">Wat erin zit weet je pas als je ouder hem geeft.</div>
+    <div style="margin:12px 0">
+      <button id="buyBtn" data-act="buy">Koop verrassing</button>
+    </div>
+    <ul id="claims"></ul>
+  </section>
+
+  <section class="card wide">
+    <h2>Klusjes deze week</h2>
+    <form id="taskForm">
+      <input id="taskName" placeholder="Bijv. afwas, stofzuigen, boodschappen" maxlength="60" required>
+      <input id="taskPts" type="number" min="1" value="5" aria-label="Punten">
+      <button type="submit">+ Klusje</button>
+    </form>
+    <ul id="tasks"></ul>
+  </section>
+
+  <section class="card wide admin" id="adminBox" hidden>
+    <h2>Beheer (ouder)</h2>
+    <div class="grid2">
+      <div>
+        <h3>Verrassingen in de pot</h3>
+        <p class="muted">De tiener ziet deze lijst niet. Bij een verzoek kies jij er één uit.</p>
+        <form id="poolForm">
+          <input id="poolText" placeholder="Bijv. pizza-avond, nieuwe nagellak" maxlength="100" required>
+          <button type="submit">+ Toevoegen</button>
+        </form>
+        <ul id="pool"></ul>
+      </div>
+      <div>
+        <h3>Instellingen</h3>
+        <form id="boxForm">
+          <input id="boxCost" type="number" min="1" value="50" aria-label="Prijs van de doos">
+          <button type="submit" class="ghost">Prijs opslaan</button>
+        </form>
+        <button class="ghost" data-act="newweek">Nieuwe week starten</button>
+        <p class="muted">Een nieuwe week zet de weekklusjes terug op open. Het saldo blijft staan.</p>
+        <h3>Open verzoeken</h3>
+        <ul id="open"></ul>
+      </div>
+    </div>
+  </section>
+</main>
+<div id="status" class="status"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
+  signInWithEmailAndPassword, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore, collection, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ---- VUL HIER JE FIREBASE-CONFIGURATIE IN (Project settings > Your apps) ----
+const firebaseConfig = {
+  apiKey: "VUL_IN",
+  authDomain: "VUL_IN",
+  projectId: "VUL_IN",
+  storageBucket: "VUL_IN",
+  messagingSenderId: "VUL_IN",
+  appId: "VUL_IN"
+};
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const newId = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const setStatus = (msg, err) => { const el = $("#status"); el.textContent = msg || ""; el.className = "status" + (err ? " err" : ""); };
+
+const S = { tasks: [], ledger: [], claims: [], pool: [], config: {}, role: null, unsubs: [] };
+const week = () => Number(S.config.week && S.config.week.n) || 1;
+const boxCost = () => Number(S.config.box && S.config.box.cost) || 50;
+const earned = () => S.ledger.reduce((s, l) => s + (Number(l.pts) || 0), 0);
+const spent = () => S.claims.reduce((s, c) => s + (Number(c.cost) || 0), 0);
+const balance = () => earned() - spent();
+const isAdmin = () => S.role === "admin";
+
+if (firebaseConfig.apiKey === "VUL_IN") {
+  setStatus("Vul eerst je Firebase-configuratie in index.html in.", true);
+}
+
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+
+// ---- Inloggen ----
+$("#loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  try {
+    await signInWithEmailAndPassword(auth, $("#email").value.trim(), $("#pw").value);
+  } catch (err) {
+    $("#loginMsg").textContent = "Inloggen mislukt. Controleer je e-mail en wachtwoord.";
+  }
+});
+$("#signup").addEventListener("click", async () => {
+  try {
+    await createUserWithEmailAndPassword(auth, $("#email").value.trim(), $("#pw").value);
+  } catch (err) {
+    $("#loginMsg").textContent = "Account maken mislukt: " + err.message;
+  }
+});
+$("#logout").addEventListener("click", () => signOut(auth));
+
+onAuthStateChanged(auth, async user => {
+  S.unsubs.forEach(f => f());
+  S.unsubs = [];
+  if (!user) {
+    S.role = null;
+    $("#login").hidden = false;
+    $("#app").hidden = true;
+    $("#logout").hidden = true;
+    $("#role").textContent = "Log in om te beginnen";
+    return;
+  }
+  try {
+    const ref = doc(db, "members", user.uid);
+    let snap = await getDoc(ref);
+    if (!snap.exists()) {
+      await setDoc(ref, { email: user.email, role: "member" });
+      snap = await getDoc(ref);
+    }
+    S.role = snap.data().role;
+  } catch (err) {
+    setStatus("Je profiel kon niet worden geladen: " + err.message, true);
+    return;
+  }
+  $("#login").hidden = true;
+  $("#app").hidden = false;
+  $("#logout").hidden = false;
+  subscribe();
+  render();
+});
+
+// ---- Realtime data ----
+function rows(snap) { return snap.docs.map(d => Object.assign({ id: d.id }, d.data())); }
+
+function listen(name, key) {
+  S.unsubs.push(onSnapshot(collection(db, name),
+    snap => { S[key] = rows(snap); render(); },
+    err => setStatus("Lezen mislukt (" + name + "): " + err.message, true)));
+}
+
+function subscribe() {
+  listen("tasks", "tasks");
+  listen("ledger", "ledger");
+  listen("claims", "claims");
+  S.unsubs.push(onSnapshot(collection(db, "config"), snap => {
+    S.config = {};
+    snap.docs.forEach(d => { S.config[d.id] = d.data(); });
+    render();
+  }));
+  if (isAdmin()) listen("pool", "pool");
+}
+
+async function run(fn, ok) {
+  try {
+    await fn();
+    setStatus(ok || "");
+  } catch (err) {
+    setStatus("Dat lukte niet: " + (err.message || "geen toegang"), true);
+  }
+}
+
+// ---- Acties ----
+function toggle(taskId) {
+  const wk = week();
+  const key = taskId + "-" + wk;
+  const isDone = S.ledger.some(l => l.id === key);
+  const pts = Number((S.tasks.find(t => t.id === taskId) || {}).pts) || 0;
+  const ref = doc(db, "ledger", key);
+  run(
+    () => isDone ? deleteDoc(ref) : setDoc(ref, { task: taskId, week: wk, pts, at: Date.now() }),
+    isDone ? "Klusje weer open (punten teruggedraaid)" : "Klusje gedaan! +" + pts + " punten"
+  );
+}
+
+function buy() {
+  const cost = boxCost();
+  if (balance() < cost) return setStatus("Nog niet genoeg punten.", true);
+  run(() => setDoc(doc(db, "claims", newId("c")), { cost, at: Date.now(), reveal: "" }),
+      "Verzoek verstuurd. Je ouder geeft de verrassing.");
+}
+
+function reveal(claimId) {
+  if (!S.pool.length) return setStatus("De pot is leeg.", true);
+  const item = S.pool[Math.floor(Math.random() * S.pool.length)];
+  run(async () => {
+    await updateDoc(doc(db, "claims", claimId), { reveal: item.text, revealedAt: Date.now() });
+    await deleteDoc(doc(db, "pool", item.id));
+  }, "Verrassing gegeven!");
+}
+
+document.addEventListener("change", e => {
+  if (e.target.dataset && e.target.dataset.act === "toggle") toggle(e.target.dataset.id);
+});
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-act]");
+  if (!b || b.tagName === "INPUT") return;
+  const id = b.dataset.id;
+  switch (b.dataset.act) {
+    case "buy": return buy();
+    case "deltask": return run(() => deleteDoc(doc(db, "tasks", id)), "Klusje verwijderd");
+    case "delpool": return run(() => deleteDoc(doc(db, "pool", id)), "Verwijderd uit de pot");
+    case "reveal": return reveal(id);
+    case "newweek": return run(() => setDoc(doc(db, "config", "week"), { n: week() + 1 }), "Nieuwe week gestart");
+  }
+});
+
+$("#taskForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const name = $("#taskName").value.trim();
+  const pts = Math.max(1, parseInt($("#taskPts").value, 10) || 1);
+  if (!name) return;
+  run(() => setDoc(doc(db, "tasks", newId("t")), { name, pts }), "Klusje toegevoegd");
+  e.target.reset();
+  $("#taskPts").value = 5;
+});
+
+$("#poolForm").addEventListener("submit", e => {
+  e.preventDefault();
+  if (!isAdmin()) return;
+  const text = $("#poolText").value.trim();
+  if (!text) return;
+  run(() => setDoc(doc(db, "pool", newId("p")), { text, at: Date.now() }), "Toegevoegd aan de pot");
+  e.target.reset();
+});
+
+$("#boxForm").addEventListener("submit", e => {
+  e.preventDefault();
+  if (!isAdmin()) return;
+  const cost = Math.max(1, parseInt($("#boxCost").value, 10) || 1);
+  run(() => setDoc(doc(db, "config", "box"), { cost }), "Prijs opgeslagen");
+});
+
+// ---- Weergave ----
+function render() {
+  if (!S.role) return;
+  const wk = week();
+  $("#role").textContent = (isAdmin() ? "Ouder-weergave" : "Tiener-weergave") + " · ingelogd als " + (auth.currentUser ? auth.currentUser.email : "");
+  $("#balance").textContent = balance();
+  $("#weekLbl").textContent = "Week " + wk + " · totaal verdiend: " + earned() + " punten";
+
+  const done = new Set(S.ledger.map(l => l.id));
+  const tl = $("#tasks");
+  tl.innerHTML = S.tasks.length ? "" : '<li class="empty">Nog geen klusjes.</li>';
+  S.tasks.forEach(t => {
+    const isDone = done.has(t.id + "-" + wk);
+    const li = document.createElement("li");
+    if (isDone) li.classList.add("done");
+    li.innerHTML =
+      '<label class="row grow" style="cursor:pointer">' +
+      '<input type="checkbox" data-act="toggle" data-id="' + esc(t.id) + '"' + (isDone ? " checked" : "") + '>' +
+      '<span class="name">' + esc(t.name) + '</span></label>' +
+      '<span class="pts">' + (Number(t.pts) || 0) + ' pt</span>' +
+      (isAdmin() ? '<button class="ghost small" data-act="deltask" data-id="' + esc(t.id) + '" title="Verwijderen">✕</button>' : "");
+    tl.appendChild(li);
+  });
+
+  const cl = $("#claims");
+  cl.innerHTML = S.claims.length ? "" : '<li class="empty">Nog geen verrassingen gekocht.</li>';
+  S.claims.forEach(c => {
+    const li = document.createElement("li");
+    li.innerHTML = c.reveal
+      ? '<span>🎁 <strong>' + esc(c.reveal) + '</strong></span>'
+      : '<span class="muted">⏳ Wacht op de verrassing van je ouder</span>';
+    cl.appendChild(li);
+  });
+
+  const buyBtn = $("#buyBtn");
+  buyBtn.textContent = "Koop verrassing (" + boxCost() + " pt)";
+  buyBtn.disabled = balance() < boxCost();
+
+  $("#adminBox").hidden = !isAdmin();
+  if (isAdmin()) {
+    if (document.activeElement !== $("#boxCost")) $("#boxCost").value = boxCost();
+
+    const pl = $("#pool");
+    pl.innerHTML = S.pool.length ? "" : '<li class="empty">De pot is leeg.</li>';
+    S.pool.forEach(p => {
+      const li = document.createElement("li");
+      li.innerHTML = '<span>' + esc(p.text) + '</span>' +
+        '<button class="ghost small" data-act="delpool" data-id="' + esc(p.id) + '">✕</button>';
+      pl.appendChild(li);
+    });
+
+    const open = S.claims.filter(c => !c.reveal);
+    const ol = $("#open");
+    ol.innerHTML = open.length ? "" : '<li class="empty">Geen open verzoeken.</li>';
+    open.forEach(c => {
+      const li = document.createElement("li");
+      li.innerHTML = '<span class="muted">' + new Date(c.at || 0).toLocaleString("nl-NL") + '</span>' +
+        '<button class="small" data-act="reveal" data-id="' + esc(c.id) + '"' + (S.pool.length ? "" : " disabled") + '>Geef verrassing</button>';
+      ol.appendChild(li);
+    });
+  }
+}
+</script>
+</body>
+</html>
