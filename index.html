@@ -224,6 +224,9 @@
           <input id="bonusPts" type="number" min="1" value="5" aria-label="Bonus in punten" style="flex:0 0 90px">
           <button type="submit">Stuur bonus</button>
         </form>
+        <h3>Schone start</h3>
+        <p class="muted">Wist alle punten, bonussen, verzoeken en de weekgeschiedenis. Klusjes, de pot en de instellingen blijven staan. Dit kan niet ongedaan worden.</p>
+        <button class="ghost" data-act="reset" style="color:var(--warn)">🧹 Alles resetten</button>
         <h3>Week</h3>
         <label style="display:flex; gap:8px; align-items:center; margin:8px 0; cursor:pointer"><input id="autoWeek" type="checkbox" style="width:18px; height:18px; accent-color:var(--ok)"> Start iedere week automatisch (na 7 dagen)</label>
         <button class="ghost" data-act="newweek">Nieuwe week starten</button>
@@ -243,7 +246,7 @@ import {
   signInWithEmailAndPassword, signOut
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
-  initializeFirestore, collection, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot
+  initializeFirestore, collection, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ---- Firebase-configuratie ----
@@ -499,6 +502,28 @@ function syncKosten() {
   }
 }
 
+// Schone start: wist punten, bonussen, verzoeken en weekgeschiedenis; klusjes, pot en instellingen blijven
+async function resetAlles() {
+  if (!isAdmin()) return;
+  if (!confirm("Alles resetten? Punten, bonussen, verzoeken en de weekgeschiedenis worden gewist. Klusjes, de pot en de instellingen blijven staan.")) return;
+  try {
+    const ops = [
+      ...S.ledger.map(l => ["ledger", l.id]),
+      ...S.claims.map(c => ["claims", c.id])
+    ];
+    // Firestore werkt in batches van maximaal 500 bewerkingen
+    for (let i = 0; i < ops.length; i += 450) {
+      const batch = writeBatch(db);
+      ops.slice(i, i + 450).forEach(([col, id]) => batch.delete(doc(db, col, id)));
+      await batch.commit();
+    }
+    await setDoc(doc(db, "config", "week"), { n: 1, starts: { 1: today() }, auto: !!cfgWeek().auto });
+    setStatus("Alles is gereset. Een schone start! 🧹");
+  } catch (err) {
+    setStatus("Reset lukte niet: " + err.message, true);
+  }
+}
+
 function importeer() {
   run(async () => {
     await Promise.all(STANDAARD.map(([id, name, cat, pts, label]) =>
@@ -526,6 +551,7 @@ document.addEventListener("click", e => {
     case "kies": return run(() => updateDoc(doc(db, "claims", id), { gekozen: Number(b.dataset.idx) }),
       "Doos gekozen! Je ouder geeft hem zo.");
     case "import": return importeer();
+    case "reset": return resetAlles();
     case "delbonus": return run(() => deleteDoc(doc(db, "ledger", id)), "Bonus verwijderd");
     case "deltask": return run(() => deleteDoc(doc(db, "tasks", id)), "Klusje verwijderd");
     case "delpool": return run(async () => {
@@ -637,10 +663,14 @@ function renderHistorie() {
     const extra = extraTaken.filter(t => gedaan.has(t.id + "-w" + n)).map(t => esc(t.name));
     const lbl = startDatum.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
     const weekGedaan = weekTaken.filter(t => gedaan.has(t.id + "-w" + n)).length;
-    // Week is af als alle dag- en weekklusjes zijn gedaan; dan klapt de lijst dicht
-    const compleet = (dagTaken.length + weekTaken.length) > 0 &&
-      (dagTaken.length === 0 || dagLedger.length >= dagTaken.length * dagen) &&
-      weekGedaan === weekTaken.length;
+    // Week is af als alle klusjes die het kind ziet zijn gedaan; dan klapt de lijst dicht.
+    // Verborgen onderdelen (zie "Wat ziet je kind?") tellen niet mee.
+    const zicht = zichtInstellingen();
+    const telDag = zicht.dag !== false && dagTaken.length > 0;
+    const telWeek = zicht.week !== false && weekTaken.length > 0;
+    const compleet = (telDag || telWeek) &&
+      (!telDag || dagLedger.length >= dagTaken.length * dagen) &&
+      (!telWeek || weekGedaan === weekTaken.length);
     const vastDicht = n === huidige && voorbij;
     const open = !vastDicht && (handmatigOpen.hasOwnProperty(n) ? handmatigOpen[n] : (n === huidige && !compleet));
     html += '<details class="week-blok" data-week="' + n + '" data-vast="' + (vastDicht ? "1" : "0") + '"' + (open ? " open" : "") + '>' +
