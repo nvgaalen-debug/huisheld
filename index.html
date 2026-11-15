@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Huisheld</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;900&display=swap" rel="stylesheet">
 <style>
   :root { --bg:#f5f6fa; --card:#fff; --ink:#1d2433; --muted:#6b7280; --accent:#6c5ce7; --ok:#16a34a; --warn:#e17055; --line:#e5e7eb; }
   * { box-sizing:border-box; }
@@ -53,6 +56,59 @@
   td:first-child { font-weight:600; width:35%; color:var(--accent); }
   .viewset label { display:flex; gap:8px; align-items:center; margin:6px 0; cursor:pointer; }
   .viewset input { width:18px; height:18px; accent-color:var(--ok); flex:0 0 auto; }
+
+  /* ---- Opgepoetst ---- */
+  @keyframes rise { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+  body { font-family:'Nunito', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; min-height:100vh;
+    background:radial-gradient(circle at 0% 0%, #e9e7ff 0, transparent 45%), radial-gradient(circle at 100% 20%, #fde6f1 0, transparent 40%), #f6f5fc; }
+  header { position:relative; overflow:hidden; padding:30px 22px 38px; border-radius:0 0 30px 30px;
+    background:linear-gradient(135deg,#6c5ce7 0%,#a29bfe 60%,#fd79a8 130%); box-shadow:0 12px 32px rgba(108,92,231,.35); }
+  header::before, header::after { content:""; position:absolute; border-radius:50%; background:rgba(255,255,255,.12); pointer-events:none; }
+  header::before { width:220px; height:220px; right:-60px; top:-90px; }
+  header::after { width:140px; height:140px; left:-40px; bottom:-80px; }
+  header h1 { font-weight:900; font-size:1.8rem; letter-spacing:-.3px; text-shadow:0 2px 12px rgba(0,0,0,.15); position:relative; }
+  header p { font-weight:700; opacity:.95; position:relative; }
+  header button { position:relative; }
+  main { gap:20px; }
+  .card { border-radius:24px; padding:22px; border:1px solid rgba(255,255,255,.9);
+    box-shadow:0 10px 30px rgba(45,35,110,.08); transition:transform .2s, box-shadow .2s; animation:rise .45s ease both; }
+  .card:hover { box-shadow:0 16px 40px rgba(45,35,110,.12); }
+  .card h2 { font-size:1.2rem; font-weight:900; letter-spacing:-.2px; }
+  .score { font-size:3.6rem; font-weight:900; line-height:1.05; color:transparent;
+    background:linear-gradient(135deg,#6c5ce7,#fd79a8); -webkit-background-clip:text; background-clip:text; }
+  .muted { font-weight:600; }
+  input, select { border-radius:14px; border:1.5px solid #e4e4f0; transition:border-color .15s, box-shadow .15s; font-family:inherit; }
+  input:focus, select:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 4px rgba(108,92,231,.15); }
+  button { font-family:inherit; border-radius:999px; padding:11px 18px; background:linear-gradient(135deg,#6c5ce7,#8f7ff7);
+    box-shadow:0 6px 16px rgba(108,92,231,.3); transition:transform .15s, box-shadow .15s; }
+  button:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 10px 22px rgba(108,92,231,.38); }
+  button:active:not(:disabled) { transform:scale(.97); }
+  button.ghost { background:#fff; color:var(--accent); border:1px solid #e0dcff; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+  button.ghost:hover:not(:disabled) { background:#f7f6ff; }
+  button.small { padding:7px 12px; }
+  li { border-bottom:1px dashed #e6e8f0; transition:background .2s; }
+  li.done { background:linear-gradient(90deg,#ecfdf5,#f7fef9); border-radius:16px; border-bottom:0; margin:5px 0; }
+  li.done .name { color:#6b7280; }
+  .check input { width:26px; height:26px; border-radius:8px; transition:transform .15s; }
+  .check input:active { transform:scale(.8); }
+  .pts { background:linear-gradient(135deg,#eef0ff,#fce7f3); color:var(--accent); box-shadow:inset 0 0 0 1px #e0dcff; font-weight:800; }
+  li.done .pts { background:#dcfce7; color:var(--ok); box-shadow:none; }
+  .count { background:#f1f0fb; padding:3px 10px; border-radius:999px; color:var(--muted); font-weight:700; }
+  .card h3 { font-weight:800; }
+  .admin { border:2px dashed #cbc4ff; background:linear-gradient(180deg,#ffffff,#faf9ff); }
+  .login { border-radius:28px; }
+  .chip { font-weight:700; border-radius:999px; padding:5px 10px; }
+  .chip.ok { box-shadow:inset 0 0 0 1px #bbf7d0; }
+  .week-blok summary { font-weight:700; }
+  table { border-spacing:0; }
+  td { border-bottom:1px dashed #e6e8f0; }
+  tr:last-child td { border-bottom:0; }
+  .status { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); margin:0; min-height:0; max-width:92%;
+    background:#1d2433; color:#fff; padding:11px 20px; border-radius:999px; box-shadow:0 12px 30px rgba(0,0,0,.25);
+    font-weight:700; text-align:center; opacity:0; transition:opacity .25s; pointer-events:none; z-index:10; }
+  .status:not(:empty) { opacity:1; }
+  .status.err { background:#e17055; color:#fff; }
+  @media (max-width:800px){ header { padding:24px 18px 32px; } .score { font-size:3rem; } }
   .chips { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
   .chip { font-size:.78rem; background:#f3f4f6; color:var(--muted); padding:4px 8px; border-radius:999px; }
   .chip.ok { background:#dcfce7; color:var(--ok); }
@@ -87,6 +143,11 @@
     <h2>Punten</h2>
     <div class="score" id="balance">0</div>
     <div class="muted" id="weekLbl"></div>
+  </section>
+
+  <section class="card">
+    <h2>🎉 Bonus van je ouder</h2>
+    <ul id="bonusList"></ul>
   </section>
 
   <section class="card">
@@ -156,7 +217,15 @@
           <label><input type="checkbox" data-view="extra"> 💶 Extra klusjes</label>
           <label><input type="checkbox" data-view="planning"> 📅 Weekplanning</label>
         </div>
+        <h3>Bonus geven</h3>
+        <p class="muted">Stuur je kind een extra beloning met een berichtje. Het ziet die zodra het de app opent.</p>
+        <form id="bonusForm">
+          <input id="bonusText" placeholder="Bijv. Top gedaan met de keuken!" maxlength="120" required>
+          <input id="bonusPts" type="number" min="1" value="5" aria-label="Bonus in punten" style="flex:0 0 90px">
+          <button type="submit">Stuur bonus</button>
+        </form>
         <h3>Week</h3>
+        <label style="display:flex; gap:8px; align-items:center; margin:8px 0; cursor:pointer"><input id="autoWeek" type="checkbox" style="width:18px; height:18px; accent-color:var(--ok)"> Start iedere week automatisch (na 7 dagen)</label>
         <button class="ghost" data-act="newweek">Nieuwe week starten</button>
         <p class="muted">Een nieuwe week zet de wekelijkse klusjes terug op open. Het saldo blijft staan, en de vorige week blijft zichtbaar in het weekoverzicht.</p>
         <h3>Open verzoeken</h3>
@@ -229,7 +298,18 @@ const newId = p => p + Date.now().toString(36) + Math.random().toString(36).slic
 const setStatus = (msg, err) => { const el = $("#status"); el.textContent = msg || ""; el.className = "status" + (err ? " err" : ""); };
 
 const S = { tasks: [], ledger: [], claims: [], pool: [], config: {}, role: null, unsubs: [] };
-const week = () => Number(S.config.week && S.config.week.n) || 1;
+const cfgWeek = () => S.config.week || {};
+// Huidige weeknummer. Met "automatisch" telt het op na elke 7 dagen vanaf het laatste startmoment
+const week = () => {
+  const c = cfgWeek();
+  const n0 = Number(c.n) || 1;
+  const s0 = c.starts && c.starts[n0];
+  if (!c.auto || !s0) return n0;
+  return n0 + Math.max(0, Math.floor(verstrekenDagen(s0) / 7));
+};
+function verstrekenDagen(s) {
+  return Math.round((new Date(today() + "T12:00:00") - new Date(s + "T12:00:00")) / 86400000);
+}
 const today = () => new Date().toLocaleDateString("sv-SE");
 const earned = () => S.ledger.reduce((s, l) => s + (Number(l.pts) || 0), 0);
 const spent = () => S.claims.reduce((s, c) => s + (Number(c.cost) || 0), 0);
@@ -247,8 +327,15 @@ const weekNr = l => l.id.includes("-w") ? Number(l.id.split("-w").pop()) : (Numb
 const dagDatum = s => new Date(s + "T12:00:00");
 const naarDatum = d => d.toLocaleDateString("sv-SE");
 function weekStart(n) {
-  const opgeslagen = S.config.week && S.config.week.starts && S.config.week.starts[n];
+  const c = cfgWeek();
+  const opgeslagen = c.starts && c.starts[n];
   if (opgeslagen) return opgeslagen;
+  const basis = c.starts && c.starts[c.n];
+  if (c.auto && basis && n > c.n) {
+    const d = new Date(basis + "T12:00:00");
+    d.setDate(d.getDate() + 7 * (n - c.n));
+    return naarDatum(d);
+  }
   const eerste = S.ledger.filter(l => weekNr(l) === n && l.at).map(l => l.at).sort((a, b) => a - b)[0];
   return eerste ? naarDatum(new Date(eerste)) : today();
 }
@@ -259,6 +346,10 @@ function isoWeek(s) {
   const eersteDonderdag = new Date(d.getFullYear(), 0, 4);
   eersteDonderdag.setDate(eersteDonderdag.getDate() - ((eersteDonderdag.getDay() + 6) % 7) + 3);
   return 1 + Math.round((d - eersteDonderdag) / (7 * 86400000));
+}
+// Een week is voorbij na 7 dagen; dan is hij niet meer aan te passen
+function weekVoorbij() {
+  return Math.round((dagDatum(today()) - dagDatum(weekStart(week()))) / 86400000) >= 7;
 }
 function weekDagen(n, start) {
   if (n !== week()) return 7;
@@ -351,6 +442,7 @@ async function run(fn, ok) {
 
 // ---- Acties ----
 function toggle(taskId) {
+  if (weekVoorbij()) return setStatus("Deze week is afgesloten. Vraag je ouder om een nieuwe week te starten.", true);
   const task = S.tasks.find(t => t.id === taskId);
   if (!task) return;
   const key = sleutel(task);
@@ -415,6 +507,7 @@ function importeer() {
 }
 
 document.addEventListener("change", e => {
+  if (e.target.id === "autoWeek" && isAdmin()) return zetAutoWeek(e.target.checked);
   if (e.target.dataset && e.target.dataset.act === "toggle") toggle(e.target.dataset.id);
   if (e.target.dataset && e.target.dataset.view && isAdmin()) {
     const onderdeel = e.target.dataset.view;
@@ -433,6 +526,7 @@ document.addEventListener("click", e => {
     case "kies": return run(() => updateDoc(doc(db, "claims", id), { gekozen: Number(b.dataset.idx) }),
       "Doos gekozen! Je ouder geeft hem zo.");
     case "import": return importeer();
+    case "delbonus": return run(() => deleteDoc(doc(db, "ledger", id)), "Bonus verwijderd");
     case "deltask": return run(() => deleteDoc(doc(db, "tasks", id)), "Klusje verwijderd");
     case "delpool": return run(async () => {
       await deleteDoc(doc(db, "pool", id));
@@ -441,7 +535,7 @@ document.addEventListener("click", e => {
     case "newweek": return run(() => {
       const n = week();
       const starts = Object.assign({}, (S.config.week && S.config.week.starts) || {}, { [n]: weekStart(n), [n + 1]: today() });
-      return setDoc(doc(db, "config", "week"), { n: n + 1, starts });
+      return setDoc(doc(db, "config", "week"), { n: n + 1, starts, auto: !!cfgWeek().auto });
     }, "Nieuwe week gestart");
   }
 });
@@ -455,6 +549,19 @@ $("#taskForm").addEventListener("submit", e => {
   run(() => setDoc(doc(db, "tasks", newId("t")), { name, cat, pts, label: "" }), "Klusje toegevoegd");
   e.target.reset();
   $("#taskPts").value = 2;
+});
+
+// Bonus: een extra beloning met berichtje, opgeslagen in de logboek-collectie met een "bonus"-sleutel
+$("#bonusForm").addEventListener("submit", e => {
+  e.preventDefault();
+  if (!isAdmin()) return;
+  const text = $("#bonusText").value.trim();
+  const pts = Math.max(1, parseInt($("#bonusPts").value, 10) || 5);
+  if (!text) return;
+  run(() => setDoc(doc(db, "ledger", newId("bonus")), { task: "bonus", pts, at: Date.now(), week: week(), text }),
+      "Bonus verstuurd 🎉");
+  e.target.reset();
+  $("#bonusPts").value = 5;
 });
 
 $("#poolForm").addEventListener("submit", e => {
@@ -471,12 +578,38 @@ $("#poolForm").addEventListener("submit", e => {
 // ---- Weergave ----
 // Onthoudt wat de ouder zelf open- of dichtklapt, zodat een week niet vanzelf dichtspringt bij elke wijziging
 const handmatigOpen = {};
-document.addEventListener("toggle", e => {
-  if (e.target.dataset && e.target.dataset.week) handmatigOpen[e.target.dataset.week] = e.target.open;
-}, true);
+document.addEventListener("click", e => {
+  const s = e.target.closest("details.week-blok > summary");
+  if (!s) return;
+  const d = s.parentElement;
+  // Een afgesloten week kan niet meer open
+  if (d.dataset.vast === "1") { e.preventDefault(); return; }
+  handmatigOpen[d.dataset.week] = !d.open;
+});
+
+// Slaat het nieuwe weeknummer op als de automatische week is doorgelopen (alleen ouder schrijft dit)
+let autoBezig = false;
+function bewaarAutoWeek() {
+  const c = cfgWeek();
+  const nu = week();
+  if (!c.auto || autoBezig || nu <= (Number(c.n) || 1)) return;
+  autoBezig = true;
+  const starts = Object.assign({}, c.starts || {}, { [nu]: weekStart(nu) });
+  setDoc(doc(db, "config", "week"), { n: nu, starts, auto: true })
+    .catch(() => {})
+    .finally(() => { autoBezig = false; });
+}
+function zetAutoWeek(aan) {
+  const c = cfgWeek();
+  const n = Number(c.n) || 1;
+  const starts = Object.assign({}, c.starts || {}, { [n]: weekStart(n) });
+  run(() => setDoc(doc(db, "config", "week"), { n, starts, auto: aan }),
+      aan ? "Elke week start nu automatisch" : "Automatisch starten uitgezet");
+}
 
 function renderHistorie() {
   const huidige = week();
+  const voorbij = weekVoorbij();
   const dagTaken = S.tasks.filter(t => soort(t) === "dag");
   const weekTaken = S.tasks.filter(t => soort(t) === "week");
   const extraTaken = S.tasks.filter(t => soort(t) === "extra");
@@ -508,9 +641,10 @@ function renderHistorie() {
     const compleet = (dagTaken.length + weekTaken.length) > 0 &&
       (dagTaken.length === 0 || dagLedger.length >= dagTaken.length * dagen) &&
       weekGedaan === weekTaken.length;
-    const open = handmatigOpen.hasOwnProperty(n) ? handmatigOpen[n] : (n === huidige && !compleet);
-    html += '<details class="week-blok" data-week="' + n + '"' + (open ? " open" : "") + '>' +
-      '<summary><strong>Week ' + n + '</strong> · weeknummer ' + isoWeek(start) + ' <span class="muted">vanaf ' + esc(lbl) + (n === huidige ? " · nu bezig" : "") + '</span>' +
+    const vastDicht = n === huidige && voorbij;
+    const open = !vastDicht && (handmatigOpen.hasOwnProperty(n) ? handmatigOpen[n] : (n === huidige && !compleet));
+    html += '<details class="week-blok" data-week="' + n + '" data-vast="' + (vastDicht ? "1" : "0") + '"' + (open ? " open" : "") + '>' +
+      '<summary><strong>Week ' + n + '</strong> · weeknummer ' + isoWeek(start) + ' <span class="muted">vanaf ' + esc(lbl) + (vastDicht ? " · afgesloten" : n === huidige ? " · nu bezig" : "") + '</span>' +
       '<div class="muted">🏡 ' + dagLedger.length + '/' + (dagTaken.length * dagen) + ' dagklusjes · 🧹 ' + weekGedaan + '/' + weekTaken.length + ' wekelijkse · ⭐ ' + puntenWeek + ' punten</div></summary>' +
       '<div class="chips">' + chips.join("") + '</div>' +
       (weekTaken.length ? '<ul>' + weekRijen + '</ul>' : "") +
@@ -526,6 +660,17 @@ function render() {
   $("#balance").textContent = balance();
   $("#weekLbl").textContent = "Week " + week() + " (weeknummer " + isoWeek(today()) + ") · totaal verdiend: " + earned() + " punten";
   $("#taskPts").hidden = !isAdmin();
+  const voorbij = weekVoorbij();
+
+  // Bonussen van de ouder, nieuwste eerst
+  const bonussen = S.ledger.filter(l => String(l.id).startsWith("bonus")).sort((a, b) => (b.at || 0) - (a.at || 0));
+  $("#bonusList").innerHTML = bonussen.length ? bonussen.map(b => {
+    const datum = b.at ? new Date(b.at).toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" }) : "";
+    return '<li><span>🎉 <strong>' + esc(b.text || "Bonus") + '</strong><br><span class="muted">' + esc(datum) + '</span></span>' +
+      '<span class="row"><span class="pts">+' + (Number(b.pts) || 0) + ' pt</span>' +
+      (isAdmin() ? '<button class="ghost small" data-act="delbonus" data-id="' + esc(b.id) + '" title="Verwijderen">✕</button>' : "") +
+      '</span></li>';
+  }).join("") : '<li class="empty">Nog geen bonus.</li>';
   const zicht = zichtInstellingen();
   $("#planTitle").closest("section").hidden = !isAdmin() && zicht.planning === false;
 
@@ -552,7 +697,7 @@ function render() {
       if (isDone) li.classList.add("done");
       li.innerHTML =
         '<label class="check grow">' +
-          '<input type="checkbox" data-act="toggle" data-id="' + esc(t.id) + '"' + (isDone ? " checked" : "") + '>' +
+          '<input type="checkbox" data-act="toggle" data-id="' + esc(t.id) + '"' + (isDone ? " checked" : "") + (voorbij ? " disabled" : "") + '>' +
           '<span class="name">' + esc(t.name) + (isDone ? " ✅" : "") + '</span></label>' +
         (t.label ? '<span class="label">' + esc(t.label) + '</span>' : "") +
         '<span class="pts">' + (Number(t.pts) || 0) + ' pt</span>' +
@@ -631,6 +776,8 @@ function render() {
       ol.appendChild(li);
     });
 
+    $("#autoWeek").checked = !!cfgWeek().auto;
+    bewaarAutoWeek();
     renderHistorie();
     syncKosten();
   }
